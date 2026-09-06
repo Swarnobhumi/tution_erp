@@ -11,6 +11,8 @@ A comprehensive ERP system for managing tuitions and educational institutions. T
 - **Attendance**: Mark and monitor student attendance.
 - **User Management**: Secure login with role-based access (Admin/Staff).
 - **Dashboard**: Quick overview of statistics and analytics.
+- **AI Chatbot**: Intelligent local NLP-based assistant (node-nlp) for quick data queries.
+- **Automated Tasks**: Monthly fee generation via built-in cron jobs (node-cron).
 
 ## Demo
 
@@ -73,3 +75,15 @@ let decrypted = decipher.update(encrypted, 'hex', 'utf8');
 decrypted += decipher.final('utf8');
 console.log(decrypted);
 ```
+
+### Deployment
+
+**Render.com**
+A `render.yaml` file is included for easy deployment to Render (Infrastructure as Code). Just connect your repository in the Render Dashboard and it will automatically provision the Node.js web service.
+
+**Hostinger / cPanel**
+A `.htaccess` file is provided to enable Passenger for Node.js out of the box, ensuring seamless SPA routing and API fallbacks.
+
+### GitHub Actions
+
+A `.github/workflows/auto-sync.yml` workflow is included to automatically keep your fork synced with the upstream repository.
