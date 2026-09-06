@@ -147,8 +147,8 @@ async function loadDashboard() {
     
     // Animate counter
     animateCounter('total-students-count', students.length);
-    animateCounter('pending-fees-count', students.filter(s => s.status === 'pending').length * 500 || 500);
-    animateCounter('classes-today-count', 3);
+    animateCounter('pending-fees-count', students.filter(s => s.status === 'pending').length * 500);
+    animateCounter('classes-today-count', 0);
   } catch (err) {
     console.error(err);
   }
@@ -326,9 +326,9 @@ async function sendAIMessage() {
     const data = await res.json();
     loadingDiv.innerHTML = `<div class="msg-bubble">${data.reply || data.message || "I can help you manage students and track fees!"}</div>`;
   } catch (err) {
-    // Demo response
+    // Error response
     setTimeout(() => {
-      loadingDiv.innerHTML = `<div class="msg-bubble">I've analyzed your dashboard. You have some pending fees to collect. Would you like me to draft a reminder message to those students?</div>`;
+      loadingDiv.innerHTML = `<div class="msg-bubble">I couldn't process that request right now. Please try again later.</div>`;
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }, 1500);
   }

@@ -65,7 +65,19 @@ app.post('/api/recover-credentials', (req, res) => {
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, Buffer.from(ivHex, 'hex'));
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    res.json({ success: true, credentials: decrypted });
+    
+    let activeCredentials = decrypted;
+    if (process.env.ADMIN_USERNAME || process.env.ADMIN_PASSWORD) {
+        activeCredentials += "\\n\\n--- Active Overrides ---";
+        if (process.env.ADMIN_USERNAME) {
+            activeCredentials += `\\nActive Username: ${process.env.ADMIN_USERNAME}`;
+        }
+        if (process.env.ADMIN_PASSWORD) {
+            activeCredentials += `\\nActive Password: ${process.env.ADMIN_PASSWORD}`;
+        }
+    }
+
+    res.json({ success: true, credentials: activeCredentials });
   } catch (err) {
     res.status(401).json({ success: false, message: 'Invalid Secret Key. Decryption failed.' });
   }
