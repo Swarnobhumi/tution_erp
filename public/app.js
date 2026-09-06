@@ -33,15 +33,92 @@ function closeModal(id) {
 // API Base URL (Change to relative since it's hosted together)
 const API_BASE = '/api';
 
-// Custom fetch wrapper (auth removed)
+// Authentication
+// For demonstration purposes, we are clearing the token on load 
+// so you always see the premium login screen first.
+localStorage.removeItem('tuition-erp-token');
+let authToken = null;
 
-async function apiFetch(endpoint, options = {}) {
+// Check if logged in on load
+if (authToken) {
+  showApp();
+}
+
+function showApp() {
+  const loginWrapper = document.getElementById('login-container');
+  const appContainer = document.getElementById('app-container');
+  
+  // Fade out login, fade in app
+  loginWrapper.style.opacity = '0';
+  setTimeout(() => {
+    loginWrapper.style.display = 'none';
+    appContainer.style.display = 'flex';
+    appContainer.style.opacity = '0';
+    setTimeout(() => {
+      appContainer.style.transition = 'opacity 0.5s ease';
+      appContainer.style.opacity = '1';
+    }, 50);
+    loadDashboard();
+  }, 300);
+}
+
+function logout() {
+  localStorage.removeItem('tuition-erp-token');
+  location.reload();
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const btn = e.target.querySelector('button');
+  const originalText = btn.innerHTML;
+  
+  btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> <span>Authenticating...</span>';
+
   try {
-    const res = await fetch(API_BASE + endpoint, options);
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      authToken = data.token;
+      localStorage.setItem('tuition-erp-token', authToken);
+      showApp();
+    } else {
+      alert('Login Failed: ' + data.message);
+      btn.innerHTML = originalText;
+    }
+  } catch (err) {
+    console.error(err);
+    // Simulation for demo purposes since backend might not be running
+    setTimeout(() => {
+      authToken = "demo-token";
+      localStorage.setItem('tuition-erp-token', authToken);
+      showApp();
+    }, 1000);
+  }
+});
+
+// Custom fetch to append auth token
+async function apiFetch(endpoint, options = {}) {
+  const headers = { ...options.headers };
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+    if (res.status === 401) {
+      logout();
+      throw new Error('Unauthorized');
+    }
     if (!res.ok) throw new Error('API returned ' + res.status);
     return res;
   } catch (err) {
-    console.error(err);
+    // For demo purposes, we will return dummy data if fetch fails
     return mockApiResponse(endpoint);
   }
 }
@@ -259,7 +336,40 @@ async function sendAIMessage() {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Initialize App
-document.addEventListener("DOMContentLoaded", () => {
-  loadDashboard();
+// ==== SUPERADMIN RECOVERY LOGIC ====
+document.getElementById('recover-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const originalText = btn.innerHTML;
+  const resultDiv = document.getElementById('recover-result');
+  const emailKey = document.getElementById('recover-email').value;
+  
+  btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Decrypting...';
+  resultDiv.style.display = 'none';
+  resultDiv.style.color = 'inherit';
+  resultDiv.innerHTML = '';
+
+  try {
+    const res = await fetch(`${API_BASE}/recover-credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailKey })
+    });
+    const data = await res.json();
+    
+    resultDiv.style.display = 'block';
+    if (data.success) {
+      resultDiv.style.color = 'var(--success)';
+      resultDiv.innerText = 'Success! Credentials Decrypted:\n\n' + data.credentials;
+    } else {
+      resultDiv.style.color = 'var(--danger)';
+      resultDiv.innerText = 'Error: ' + data.message;
+    }
+  } catch (err) {
+    resultDiv.style.display = 'block';
+    resultDiv.style.color = 'var(--danger)';
+    resultDiv.innerText = 'Network error or decryption failed.';
+  } finally {
+    btn.innerHTML = originalText;
+  }
 });
