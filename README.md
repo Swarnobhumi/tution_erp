@@ -1,18 +1,16 @@
 # Tution Management System
 
-A comprehensive ERP system for managing tuitions and educational institutions. This application allows you to manage students, staff, batches, fees, attendance, and daily operations.
+A management system for tuition centres and small institutions. It lets a single administrator manage students, attendance, fees, and daily operations from one dashboard.
 
 ## Features
 
-- **Student Management**: Add, edit, and track student information.
-- **Staff Management**: Manage teacher profiles and assignments.
-- **Batch Management**: Create and manage batches with schedules.
-- **Fee Management**: Track fee payments, installments, and dues.
-- **Attendance**: Mark and monitor student attendance.
-- **User Management**: Secure login with role-based access (Admin/Staff).
-- **Dashboard**: Quick overview of statistics and analytics.
-- **AI Chatbot**: Intelligent local NLP-based assistant (node-nlp) for quick data queries.
-- **Automated Tasks**: Monthly fee generation via built-in cron jobs (node-cron).
+- **Student Management**: Add, edit, and delete students (name, phone, batch time, fee type and amount). Deleting a student also removes their fee and attendance history.
+- **Attendance**: Mark daily attendance (Present / Absent / Late) with per-student notes.
+- **Fee Management**: Track monthly dues per student and record payments.
+- **Dashboard**: At-a-glance totals — students, pending fees (₹), and present-today — plus a recent-enrolments feed.
+- **AI Assistant**: A local NLP assistant (node-nlp) that answers quick data questions such as student count and who has pending fees. Runs fully offline, no external API.
+- **Automated Tasks**: Monthly fee records are auto-generated for monthly-plan students via a built-in cron job (node-cron).
+- **Secure Admin Login**: JWT-based authentication, with an AES-256 encrypted superadmin recovery flow.
 
 ## Demo
 
@@ -24,7 +22,7 @@ Follow the steps below to set up the project locally.
 
 ### Prerequisites
 
-- Node.js >= 18.x
+- Node.js 20.x (see `.node-version`)
 - npm (Node Package Manager)
 
 ### Installation Steps
@@ -48,6 +46,18 @@ Follow the steps below to set up the project locally.
 
 4.  **Database Setup**
     The application uses SQLite by default. The database file will be automatically created when you start the server.
+
+### Configuration (environment variables)
+
+Set these in `.env` (all optional locally; set them for production):
+
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Port the server listens on (default `3000`). |
+| `ADMIN_USERNAME` | Admin login username (default `superadmin`). |
+| `ADMIN_PASSWORD` | Admin login password. If unset, a built-in encrypted fallback is used (recoverable via the login screen's "Recover Superadmin Access"). Set this in production. |
+| `JWT_SECRET` | Secret used to sign session tokens. **Set this in production** — if unset in production the server generates a random per-process secret (secure, but sessions are dropped on restart). |
+| `NODE_ENV` | Set to `production` on the live server. |
 
 5.  **Run the Server**
     Start the local development server:

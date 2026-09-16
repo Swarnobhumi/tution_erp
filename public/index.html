@@ -36,11 +36,11 @@
       <form id="login-form">
         <div class="form-group input-icon">
           <i class="ph ph-user"></i>
-          <input type="text" id="login-username" placeholder="Username" required>
+          <input type="text" id="login-username" placeholder="Username" aria-label="Username" autocomplete="username" required>
         </div>
         <div class="form-group input-icon">
           <i class="ph ph-lock-key"></i>
-          <input type="password" id="login-password" placeholder="Password" required>
+          <input type="password" id="login-password" placeholder="Password" aria-label="Password" autocomplete="current-password" required>
         </div>
         <button type="submit" class="btn primary full-width glow-btn">
           <span>Login to Dashboard</span>
@@ -65,19 +65,19 @@
         <h2>Tuition<span>ERP</span></h2>
       </div>
       <ul class="nav-links">
-        <li class="active" data-target="dashboard-view">
+        <li class="active" data-target="dashboard-view" role="button" tabindex="0" aria-current="page">
           <i class="ph ph-squares-four"></i>
           <span>Dashboard</span>
         </li>
-        <li data-target="students-view">
+        <li data-target="students-view" role="button" tabindex="0" aria-current="false">
           <i class="ph ph-users"></i>
           <span>Students</span>
         </li>
-        <li data-target="attendance-view">
+        <li data-target="attendance-view" role="button" tabindex="0" aria-current="false">
           <i class="ph ph-calendar-check"></i>
           <span>Attendance</span>
         </li>
-        <li data-target="fees-view">
+        <li data-target="fees-view" role="button" tabindex="0" aria-current="false">
           <i class="ph ph-wallet"></i>
           <span>Fees</span>
         </li>
@@ -91,15 +91,21 @@
       </div>
     </nav>
 
+    <!-- Backdrop for the mobile sidebar drawer -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
+
     <!-- Main Content Area -->
     <main class="content">
       <header class="glass-header">
-        <div class="header-greeting">
-          <h1>Welcome back, Admin</h1>
-          <p>Here is what's happening with your tuition today.</p>
+        <div class="header-left">
+          <button class="hamburger" aria-label="Open navigation menu" onclick="toggleSidebar()"><i class="ph ph-list"></i></button>
+          <div class="header-greeting">
+            <h1>Welcome back, Admin</h1>
+            <p>Here is what's happening with your tuition today.</p>
+          </div>
         </div>
         <div class="user-profile">
-          <button class="notification-btn"><i class="ph ph-bell"></i><span class="badge"></span></button>
+          <button class="notification-btn" aria-label="Notifications"><i class="ph ph-bell"></i><span class="badge"></span></button>
           <div class="avatar glow-avatar">
             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin&backgroundColor=transparent" alt="Admin">
           </div>
@@ -133,8 +139,8 @@
                 <i class="ph-fill ph-calendar-star"></i>
               </div>
               <div class="stat-details">
-                <h3>Classes Today</h3>
-                <p class="counter" id="classes-today-count">0</p>
+                <h3>Present Today</h3>
+                <p class="counter" id="present-today-count">0</p>
               </div>
             </div>
           </div>
@@ -143,11 +149,12 @@
             <div class="widget glass-card">
               <div class="widget-header">
                 <h3>Recent Activity</h3>
-                <button class="btn icon-only"><i class="ph ph-dots-three"></i></button>
               </div>
-              <div class="empty-state">
-                <i class="ph ph-activity"></i>
-                <p>No recent activity</p>
+              <div id="recent-activity">
+                <div class="empty-state">
+                  <i class="ph ph-activity"></i>
+                  <p>No recent activity</p>
+                </div>
               </div>
             </div>
           </div>
@@ -160,7 +167,7 @@
               <h2>Manage Students</h2>
               <p class="subtitle">View and edit student details</p>
             </div>
-            <button class="btn primary glow-btn" onclick="openModal('student-modal')">
+            <button class="btn primary glow-btn" onclick="openStudentModal()">
               <i class="ph-bold ph-plus"></i> Add Student
             </button>
           </div>
@@ -246,7 +253,7 @@
     </main>
 
     <!-- AI Assistant Floating Button -->
-    <button id="ai-fab" class="glow-btn" onclick="toggleAIChat()">
+    <button id="ai-fab" class="glow-btn" onclick="toggleAIChat()" aria-label="Open AI assistant">
       <i class="ph-fill ph-sparkle"></i>
     </button>
 
@@ -260,7 +267,7 @@
             <span class="status-indicator">Online</span>
           </div>
         </div>
-        <button class="btn icon-only" onclick="toggleAIChat()"><i class="ph ph-x"></i></button>
+        <button class="btn icon-only" onclick="toggleAIChat()" aria-label="Close AI assistant"><i class="ph ph-x"></i></button>
       </div>
       
       <div id="ai-chat-messages" class="chat-area">
@@ -322,9 +329,9 @@
       <div class="modal-header">
         <div class="modal-title">
           <div class="icon-bg"><i class="ph ph-user-plus"></i></div>
-          <h3>Add New Student</h3>
+          <h3 id="student-modal-title">Add New Student</h3>
         </div>
-        <button class="btn icon-only close-btn" onclick="closeModal('student-modal')">
+        <button class="btn icon-only close-btn" onclick="closeModal('student-modal')" aria-label="Close">
           <i class="ph ph-x"></i>
         </button>
       </div>
@@ -372,11 +379,14 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn secondary" onclick="closeModal('student-modal')">Cancel</button>
-          <button type="submit" class="btn primary glow-btn">Save Student</button>
+          <button type="submit" id="student-submit-btn" class="btn primary glow-btn">Save Student</button>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- Toast notifications -->
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <script src="app.js"></script>
 </body>
