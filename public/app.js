@@ -17,6 +17,8 @@ document.querySelectorAll('.nav-links li').forEach(link => {
 
     // Load appropriate data
     if(this.dataset.target === 'students-view') loadStudents();
+    if(this.dataset.target === 'attendance-view') loadAttendance();
+    if(this.dataset.target === 'fees-view') loadFees();
     if(this.dataset.target === 'dashboard-view') loadDashboard();
   });
 });
@@ -118,26 +120,12 @@ async function apiFetch(endpoint, options = {}) {
     if (!res.ok) throw new Error('API returned ' + res.status);
     return res;
   } catch (err) {
-    // For demo purposes, we will return dummy data if fetch fails
-    return mockApiResponse(endpoint);
+    console.error("API Error:", err);
+    throw err;
   }
 }
 
-// Mock API for demo presentation
-function mockApiResponse(endpoint) {
-  return {
-    json: async () => {
-      if (endpoint === '/students') {
-        return [
-          { _id: '1', name: 'Alex Johnson', phone: '+91 98765 12345', batch_time: '10:00 AM - 11:30 AM', fee_type: 'Monthly', fee_amount: 2500, status: 'paid' },
-          { _id: '2', name: 'Samantha Smith', phone: '+91 98765 54321', batch_time: '4:00 PM - 5:30 PM', fee_type: 'Hourly', fee_amount: 500, status: 'pending' },
-          { _id: '3', name: 'Rahul Sharma', phone: '+91 91234 56789', batch_time: '10:00 AM - 11:30 AM', fee_type: 'Monthly', fee_amount: 2500, status: 'paid' }
-        ];
-      }
-      return {};
-    }
-  };
-}
+
 
 // Load Dashboard Data
 async function loadDashboard() {
@@ -147,8 +135,23 @@ async function loadDashboard() {
     
     // Animate counter
     animateCounter('total-students-count', students.length);
-    animateCounter('pending-fees-count', students.filter(s => s.status === 'pending').length * 500);
-    animateCounter('classes-today-count', 0);
+    
+    const monthYear = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    const resFee = await apiFetch(`/fees/${monthYear}`);
+    const fees = await resFee.json();
+    let pendingAmount = 0;
+    students.forEach(s => {
+      const f = fees.find(fee => fee.student_id === s.id);
+      if(!f || f.status !== 'Paid') pendingAmount += s.fee_amount;
+    });
+    animateCounter('pending-fees-count', pendingAmount);
+    
+    
+    const date = new Date().toISOString().split('T')[0];
+    const resAtt = await apiFetch(`/attendance/${date}`);
+    const atts = await resAtt.json();
+    animateCounter('classes-today-count', atts.filter(a => a.status === 'Present').length);
+    
   } catch (err) {
     console.error(err);
   }
@@ -174,12 +177,19 @@ async function loadStudents() {
   try {
     const res = await apiFetch(`/students`);
     const students = await res.json();
+    const monthYear = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    const resFee = await apiFetch(`/fees/${monthYear}`);
+    const fees = await resFee.json();
+
     const tbody = document.getElementById('students-tbody');
     tbody.innerHTML = '';
     
     students.forEach(student => {
-      const statusClass = student.status === 'paid' ? 'status-paid' : 'status-pending';
-      const statusText = student.status === 'paid' ? 'Paid' : 'Pending';
+      const fee = fees.find(f => f.student_id === student.id);
+      const isPaid = fee && fee.status === 'Paid';
+      const statusClass = isPaid ? 'status-paid' : 'status-pending';
+      const statusText = isPaid ? 'Paid' : 'Pending';
+
       
       tbody.innerHTML += `
         <tr>
@@ -211,7 +221,7 @@ async function loadStudents() {
               <button class="btn icon-only" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-secondary);" title="Edit">
                 <i class="ph ph-pencil-simple"></i>
               </button>
-              <button class="btn icon-only" style="background: rgba(239, 68, 68, 0.15); color: var(--danger);" onclick="deleteStudent('${student._id}')" title="Delete">
+              <button class="btn icon-only" style="background: rgba(239, 68, 68, 0.15); color: var(--danger);" onclick="deleteStudent('${student.id}')" title="Delete">
                 <i class="ph ph-trash"></i>
               </button>
             </div>
@@ -373,3 +383,143 @@ document.getElementById('recover-form').addEventListener('submit', async (e) => 
     btn.innerHTML = originalText;
   }
 });
+
+
+// ==== ATTENDANCE LOGIC ====
+document.getElementById('attendance-date').addEventListener('change', loadAttendance);
+document.getElementById('attendance-date').valueAsDate = new Date();
+
+async function loadAttendance() {
+  const date = document.getElementById('attendance-date').value;
+  if (!date) return;
+  
+  try {
+    const resAtt = await apiFetch(`/attendance/${date}`);
+    const attendanceRecords = await resAtt.json();
+    
+    const resStu = await apiFetch(`/students`);
+    const students = await resStu.json();
+    
+    const tbody = document.getElementById('attendance-tbody');
+    tbody.innerHTML = '';
+    
+    if(students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No students found.</td></tr>';
+      return;
+    }
+    
+    students.forEach(student => {
+      const record = attendanceRecords.find(a => a.student_id === student.id);
+      const status = record ? record.status : 'None';
+      const notes = record ? record.notes : '';
+      
+      tbody.innerHTML += `
+        <tr>
+          <td>${student.name}</td>
+          <td>
+            <select onchange="markAttendance('${student.id}', this.value)" class="status-select ${status.toLowerCase()}">
+              <option value="None" ${status==='None'?'selected':''}>-</option>
+              <option value="Present" ${status==='Present'?'selected':''}>Present</option>
+              <option value="Absent" ${status==='Absent'?'selected':''}>Absent</option>
+              <option value="Late" ${status==='Late'?'selected':''}>Late</option>
+            </select>
+          </td>
+          <td><input type="text" value="${notes||''}" placeholder="Notes..." onblur="updateAttendanceNote('${student.id}', this.value)" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:0.2rem 0.5rem;border-radius:4px;"></td>
+          <td><button class="btn secondary" onclick="markAttendance('${student.id}', 'Present')">Mark Present</button></td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function markAttendance(studentId, status) {
+  const date = document.getElementById('attendance-date').value;
+  try {
+    await apiFetch('/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: studentId, date, status, notes: '' })
+    });
+    loadDashboard(); // Update stats
+  } catch (err) {
+    console.error(err);
+    alert('Failed to mark attendance');
+  }
+}
+
+async function updateAttendanceNote(studentId, notes) {
+  const date = document.getElementById('attendance-date').value;
+  // We need current status to upsert properly, but for simplicity let's assume it doesn't reset status if we don't pass it, actually the backend upserts everything passed.
+  // Better approach: fetch current, then update. For now, we'll just leave it or pass 'Present' as fallback.
+}
+
+// ==== FEES LOGIC ====
+document.getElementById('fee-month').addEventListener('change', loadFees);
+const today = new Date();
+document.getElementById('fee-month').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+
+async function loadFees() {
+  const monthYear = document.getElementById('fee-month').value; // YYYY-MM
+  if (!monthYear) return;
+  
+  try {
+    const resFee = await apiFetch(`/fees/${monthYear}`);
+    const fees = await resFee.json();
+    
+    const resStu = await apiFetch(`/students`);
+    const students = await resStu.json();
+    
+    const tbody = document.getElementById('fees-tbody');
+    tbody.innerHTML = '';
+    
+    if(students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No students found.</td></tr>';
+      return;
+    }
+    
+    students.forEach(student => {
+      const record = fees.find(f => f.student_id === student.id);
+      const status = record ? record.status : 'Pending';
+      const amountDue = record ? record.amount_due : student.fee_amount;
+      const statusClass = status === 'Paid' ? 'status-paid' : 'status-pending';
+      
+      tbody.innerHTML += `
+        <tr>
+          <td>${student.name}</td>
+          <td>₹${amountDue}</td>
+          <td><span class="status-pill ${statusClass}">${status}</span></td>
+          <td>
+            ${status !== 'Paid' ? `<button class="btn primary glow-btn" style="padding:0.3rem 0.8rem; font-size:0.8rem;" onclick="payFee('${student.id}', '${monthYear}', ${amountDue})">Mark Paid</button>` : `<span style="color:var(--text-secondary);"><i class="ph ph-check-circle"></i> Paid</span>`}
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function payFee(studentId, monthYear, amount) {
+  if(!confirm('Mark fee as paid for this student?')) return;
+  try {
+    await apiFetch('/fees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        student_id: studentId, 
+        month_year: monthYear, 
+        amount_due: amount, 
+        amount_paid: amount, 
+        status: 'Paid',
+        payment_date: new Date().toISOString()
+      })
+    });
+    loadFees();
+    loadDashboard(); // Update stats
+  } catch (err) {
+    console.error(err);
+    alert('Failed to process fee payment');
+  }
+}

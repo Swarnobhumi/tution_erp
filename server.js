@@ -31,9 +31,10 @@ sequelize.sync().then(() => {
 
 // Authentication Logic
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'superadmin';
 const FALLBACK_PASSWORD_HASH = 'b65e0c6e7ecbf81e14169aafb43aa6beb10ed3183d062205f7a353229e7d9e6e'; // SHA256 of the superadmin password
-const AUTH_TOKEN = 'tuition-erp-auth-token-12345'; // Hardcoded for simplicity
+const JWT_SECRET = process.env.JWT_SECRET || 'tuition-erp-secret-key-change-in-production';
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -48,7 +49,8 @@ app.post('/api/login', (req, res) => {
   }
 
   if (username === ADMIN_USERNAME && passwordMatches) {
-    res.json({ token: AUTH_TOKEN });
+    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token });
   } else {
     res.status(401).json({ message: 'Invalid credentials' });
   }
@@ -86,8 +88,15 @@ app.post('/api/recover-credentials', (req, res) => {
 // Auth Middleware for protected routes
 const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.split(' ')[1] === AUTH_TOKEN) {
-    next();
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      req.user = user;
+      next();
+    });
   } else {
     res.status(401).json({ message: 'Unauthorized' });
   }
